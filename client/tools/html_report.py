@@ -1600,6 +1600,7 @@ table {border-collapse:separate; border-spacing:0 0px;}
         else:
             style[0] = 'debug'
         if line[2] in test_filenames:
+            print "test %s" % line[2]
             style[1] = "file_test"
         else:
             style[1] = "file_framework"
@@ -1806,7 +1807,7 @@ def get_kvm_version(result_dir):
 
 
 def create_report(dirname, html_path='', output_file_name=None,
-                  test_filenames=[]):
+                  test_dirs=[]):
     """
     Create an HTML report with info about an autotest client job.
 
@@ -1823,6 +1824,16 @@ def create_report(dirname, html_path='', output_file_name=None,
     status_file_name = os.path.join(dirname, 'status')
     if not os.path.isfile(status_file_name):
         raise InvalidAutotestResultDirError(res_dir)
+    # Make as function
+    test_filenames = []
+    for directory in test_dirs:
+        test_filenames.extend(glob.glob(directory + '/*.py'))
+    for i in xrange(len(test_filenames)):
+        # without .py and only 10 chars
+        name = os.path.basename(test_filenames[i])[:-3]
+        name = name[0:min(len(name), 10)]
+        test_filenames[i] = name
+    # end of function
     sysinfo_dir = os.path.join(dirname, 'sysinfo')
     host = get_info_file(os.path.join(sysinfo_dir, 'hostname'))
     rx = re.compile('^\s+[END|START].*$')
@@ -1877,20 +1888,10 @@ if __name__ == "__main__":
             html_path = ''
         results_dir = os.path.abspath(options.results_dir)
         output_file = os.path.abspath(options.output_file)
-        # Make as function
-        test_filenames = []
-        for directory in options.test_dirs:
-            test_filenames.extend(glob.glob(directory + '/*.py'))
-        for i in xrange(len(test_filenames)):
-            # without .py and only 10 chars
-            name = os.path.basename(test_filenames[i])[:-3]
-            name = name[0:min(len(name), 10)]
-            test_filenames[i] = name
-        # end of function
         if os.path.isdir(results_dir):
             try:
                 create_report(results_dir, html_path, output_file,
-                              test_filenames)
+                              test_dirs)
             except InvalidAutotestResultDirError, detail:
                 print "%s (directory missing 'status' file)" % detail
                 parser.print_help()

@@ -970,7 +970,7 @@ class base_client_job(base_job.base_job):
             # TODO: add test_filenames here
             test_dirs = [os.path.join(self.clientdir, 'tests/kvm/tests')]
             test_dirs.append(os.path.join(self.clientdir, 'virt/tests'))
-            html_report.create_report(self.resultdir, test_filenames=test_dirs)
+            html_report.create_report(self.resultdir, test_dirs=test_dirs)
         except Exception, e:
             logging.error("Error writing job HTML report: %s", e)
 

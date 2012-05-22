@@ -8,6 +8,7 @@ Module used to parse the autotest job results and generate an HTML report.
 """
 
 import os, sys, re, time, datetime, commands, optparse
+import glob
 
 
 class InvalidAutotestResultDirError(Exception):
@@ -1362,7 +1363,8 @@ function processList(ul) {
 """
 
 
-def make_html_file(metadata, results, tag, host, output_file_name, dirname):
+def make_html_file(metadata, results, tag, host, output_file_name, dirname,
+                   resultdir, test_filenames):
     """
     Create HTML file contents for the job report, to stdout or filesystem.
 
@@ -1492,7 +1494,9 @@ id="t1" class="stats table-autosort:4 table-autofilter table-stripeclass:alterna
             else:
                 output.write('<td align=\"left\"></td>')
             # print execution time
-            output.write('<td align="left"><A HREF=\"%s\">Debug</A></td>' % os.path.join(dirname, res['subdir'], "debug"))
+            generate_test_html(os.path.join(resultdir, res['subdir'], "debug"),
+                               test_filenames)
+            output.write('<td align="left"><A HREF=\"%s\">Debug</A></td>' % os.path.join(dirname, res['subdir'], "debug/index.html"))
 
             output.write('</tr>')
             print_result(results[r][1], indent + 1)
@@ -1521,6 +1525,132 @@ id="t1" class="stats table-autosort:4 table-autofilter table-stripeclass:alterna
     output.write("</body></html>")
     if output_file_name:
         output.close()
+
+
+def generate_test_log_html(fullname, test_filenames):
+    def __col(line, span_class=['default']):
+        out = '    <td class="'
+        if type(span_class) == str:
+            span_class = [span_class]
+        for cls in span_class:
+            out += '%s ' % cls
+        out += '"'
+        return '%s>%s</td>\n' % (out, line)
+
+    re_line = re.compile(r'^(\d{2}/\d{2} \d{2}:\d{2}:\d{2}) (\w+)\s*\|'
+                          '\s*(\w+):(\d{4})\s*\|(.*)$')
+    html_prefix = """
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Autotest test results</title>
+<style type="text/css">
+body { font-family: monospace; }
+td {white-space:nowrap}
+table {border-collapse:separate; border-spacing:0 0px;}
+.column_date { text-align:right;}
+.column_level { text-align:right;}
+.column_file { text-align:right;}
+
+.info { font-weight:bold; }
+.error { color: red; font-weight:bold;}
+.warning { color: orange; font-weight:bold;}
+.debug {;}
+.file_test { background-color:#EEEEFE; }
+.file_framework { background-color:white; }
+</style>
+</head>
+<body>
+"""
+    src = open(fullname, 'r')
+    dst = open('%s.htm' % fullname, 'w')
+    dst.write(html_prefix)
+    dst.write('<div class="header">\n')
+    dst.write('<a href="%s">RAW FILE</a>\n' % fullname)
+    dst.write('</div>\n\n')
+
+    # log
+    dst.write('<div class="log">\n')
+    dst.write('<table id="log">\n')
+    dst.write('<tr class="header">\n')
+    dst.write('    <th>Date</th>\n')
+    dst.write('    <th>Level</th>\n')
+    dst.write('    <th>File:line</th>\n')
+    dst.write('    <th>Output</th>\n')
+    dst.write('</tr>\n')
+    # parse src file and match regexps:
+    style = ['default', 'default']
+    for line in src.readlines():
+        match_line = re_line.match(line)
+        if not match_line:  # keep the previous setting
+            line = ['', '', '', '', line]
+        else:
+            line = match_line.groups()
+        # Detect the end of current mode
+        # if current == mode: if line = something: current = None
+        # log_level
+        if line[1] == '':
+            pass
+        elif line[1] == 'ERROR':
+            style[0] = 'error'
+        elif line[1] == 'WARNI':
+            style[0] = 'warning'
+        elif line[1] == 'INFO':
+            style[0] = 'info'
+        else:
+            style[0] = 'debug'
+        if line[2] in test_filenames:
+            style[1] = "file_test"
+        else:
+            style[1] = "file_framework"
+        cls = ""
+        for _ in style:
+            cls += "%s " % _
+        dst.write('<tr class="%s">\n' % cls)
+        # date
+        dst.write(__col(line[0] + "&nbsp;", "column_date"))
+        # level
+        dst.write(__col(line[1] + "|", "column_level"))
+        # file
+        dst.write(__col("%s:%s|" % (line[2], line[3]), "column_file"))
+        # line
+        dst.write(__col(line[4].replace(' ', '&nbsp'), "column_line"))
+        # next_line
+        dst.write('</tr>\n')
+    dst.write("</table>")
+    dst.write("</div></body></html>")
+    dst.close()
+    src.close()
+
+
+def generate_test_html(test_dir, test_filenames):
+    """
+    Parse test logs and create nice outputs for them.
+    """
+    html_prefix = """
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Autotest test results</title>
+<style type="text/css">
+%s
+</style>
+</head>
+<body>
+""" % (format_css)
+    index = open(os.path.join(test_dir, 'index.html'), "w")
+    index.write(html_prefix)
+    for name in os.listdir(test_dir):
+        fullname = os.path.join(test_dir, name)
+        if (name.endswith("INFO") or name.endswith("WARNING") or
+                name.endswith("ERROR") or name.endswith("DEBUG")):
+            generate_test_log_html(fullname, test_filenames)
+            index.write("<a href=%s.htm>%s</a> (<a href=%s>RAW</a>)<br>" %
+                                            (fullname, fullname, fullname))
+        else:
+            index.write("<a href=%s>%s</a><br>" % (fullname, fullname))
+    index.write("</body></html>")
+    index.close()
 
 
 def parse_result(dirname, line, results_data):
@@ -1675,7 +1805,8 @@ def get_kvm_version(result_dir):
     return "Kernel: %s<br>Userspace: %s" % (kvm_version, kvm_userspace_version)
 
 
-def create_report(dirname, html_path='', output_file_name=None):
+def create_report(dirname, html_path='', output_file_name=None,
+                  test_filenames=[]):
     """
     Create an HTML report with info about an autotest client job.
 
@@ -1722,7 +1853,7 @@ def create_report(dirname, html_path='', output_file_name=None):
     if output_file_name is None:
         output_file_name = os.path.join(dirname, 'job_report.html')
     make_html_file(metalist, results_data, tag, host, output_file_name,
-                   html_path)
+                   html_path, dirname, test_filenames)
 
 
 if __name__ == "__main__":
@@ -1735,6 +1866,8 @@ if __name__ == "__main__":
     parser.add_option("-R", dest="relative_paths", action='store_true',
                       default=False,
                       help="Use relative logfile paths on the HTML report")
+    parser.add_option("-t", dest="test_dirs", action='append', default=[],
+                      help="Add dir with tests")
 
     options = parser.parse_args()[0]
 
@@ -1744,9 +1877,20 @@ if __name__ == "__main__":
             html_path = ''
         results_dir = os.path.abspath(options.results_dir)
         output_file = os.path.abspath(options.output_file)
+        # Make as function
+        test_filenames = []
+        for directory in options.test_dirs:
+            test_filenames.extend(glob.glob(directory + '/*.py'))
+        for i in xrange(len(test_filenames)):
+            # without .py and only 10 chars
+            name = os.path.basename(test_filenames[i])[:-3]
+            name = name[0:min(len(name), 10)]
+            test_filenames[i] = name
+        # end of function
         if os.path.isdir(results_dir):
             try:
-                create_report(results_dir, html_path, output_file)
+                create_report(results_dir, html_path, output_file,
+                              test_filenames)
             except InvalidAutotestResultDirError, detail:
                 print "%s (directory missing 'status' file)" % detail
                 parser.print_help()

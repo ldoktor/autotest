@@ -1377,6 +1377,23 @@ def make_html_file(metadata, results, tag, host, output_file_name, dirname,
     @param dirname: Prefix for HTML links. If empty string, the HTML links
             will be relative to the results dir.
     """
+    print "------------------------------------------------------------------"
+    print metadata
+    print "------------------------------------------------------------------"
+    print results
+    print "------------------------------------------------------------------"
+    print tag
+    print "------------------------------------------------------------------"
+    print host
+    print "------------------------------------------------------------------"
+    print output_file_name
+    print "------------------------------------------------------------------"
+    print dirname
+    print "------------------------------------------------------------------"
+    print resultdir
+    print "------------------------------------------------------------------"
+    print test_filenames
+    print "------------------------------------------------------------------"
     html_prefix = """
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
@@ -1456,6 +1473,7 @@ id="t1" class="stats table-autosort:4 table-autofilter table-stripeclass:alterna
 <th align="left">Time (sec)</th>
 <th align="left">Info</th>
 <th align="left">Debug</th>
+<th aligh="left">Test output</th>
 </tr></thead>
 <tbody>
 """
@@ -1497,6 +1515,8 @@ id="t1" class="stats table-autosort:4 table-autofilter table-stripeclass:alterna
             generate_test_html(os.path.join(resultdir, res['subdir'], "debug"),
                                test_filenames)
             output.write('<td align="left"><A HREF=\"%s\">Debug</A></td>' % os.path.join(dirname, res['subdir'], "debug/index.html"))
+
+            output.write('<td align="left">%s</td>' % res['output'])
 
             output.write('</tr>')
             print_result(results[r][1], indent + 1)
@@ -1600,7 +1620,6 @@ table {border-collapse:separate; border-spacing:0 0px;}
         else:
             style[0] = 'debug'
         if line[2] in test_filenames:
-            print "test %s" % line[2]
             style[1] = "file_test"
         else:
             style[1] = "file_framework"
@@ -1662,9 +1681,15 @@ def parse_result(dirname, line, results_data):
     @param line: Status log line.
     @param results_data: Dictionary with results.
     """
-    parts = line.split()
+    parts = line.split('\t')
+    while True:
+        try:
+            parts.remove('')
+        except ValueError:
+            break
+    print parts
 
-    if len(parts) < 4:
+    if len(parts) < 5:
         return None
 
     global tests
@@ -1679,31 +1704,32 @@ def parse_result(dirname, line, results_data):
         except IndexError:
             results_data[""][1].append(parts[1])
 
-    elif (parts[0] == 'END'):
+    elif (parts[0] == 'GOOD' or parts[0] == 'TEST_NA' or parts[0] == 'FAIL'):
         result = {}
         exec_time = ''
         # fetch time stamp
-        if len(parts) > 7:
-            temp = parts[5].split('=')
-            exec_time = temp[1] + ' ' + parts[6] + ' ' + parts[7]
+        exec_time = parts[4].split('=')[1]
+        #if len(parts) > 7:
+        #    temp = parts[5].split('=')
+        #    exec_time = temp[1] + ' ' + parts[6] + ' ' + parts[7]
         # assign default values
         result['time'] = exec_time
         result['testcase'] = 'na'
         result['status'] = 'na'
         result['log'] = None
         result['exec_time_sec'] = 'na'
-        tag = parts[3]
+        tag = parts[2]
 
-        result['subdir'] = parts[2]
+        result['subdir'] = parts[1]
         # assign actual values
         rx = re.compile('^(\w+)\.(.*)$')
-        m1 = rx.findall(parts[3])
+        m1 = rx.findall(parts[2])
         if len(m1):
             result['testcase'] = m1[0][1]
         else:
-            result['testcase'] = parts[3]
+            result['testcase'] = parts[2]
         result['title'] = str(tag)
-        result['status'] = parts[1]
+        result['status'] = parts[0]
         if result['status'] != 'GOOD':
             result['log'] = get_exec_log(dirname, tag)
         if len(results_data) > 0:
@@ -1715,6 +1741,12 @@ def parse_result(dirname, line, results_data):
             except ValueError:
                 total_exec_time_sec = 0
             result['exec_time_sec'] = total_exec_time_sec
+        output = ""
+        for out in parts[5:]:
+            output += "%s " % out
+        if len(output) > 255:
+            output = output[:255] + "..."
+        result['output'] = output
         results_data[parts[2]][2] = result
 
     return None
@@ -1836,7 +1868,7 @@ def create_report(dirname, html_path='', output_file_name=None,
     # end of function
     sysinfo_dir = os.path.join(dirname, 'sysinfo')
     host = get_info_file(os.path.join(sysinfo_dir, 'hostname'))
-    rx = re.compile('^\s+[END|START].*$')
+    rx = re.compile('^\s+(GOOD|FAIL|TEST_NA|START).*$')
     # create the results set dict
     results_data = {}
     results_data[""] = [0, [], None]

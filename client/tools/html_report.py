@@ -1566,10 +1566,16 @@ table {border-collapse:separate; border-spacing:0 0px;}
 <body>
 """
     src = open(fullname, 'r')
-    dst = open('%s.htm' % fullname, 'w')
+    dst = open('%s.html' % fullname, 'w')
     dst.write(html_prefix)
     dst.write('<div class="header">\n')
     dst.write('<a href="%s">RAW FILE</a>\n' % fullname)
+    result_log_name = fullname.rsplit('.', 1)[0]
+    dst.write('<a href="%s">DEBUG</a>\n' % (result_log_name + '.DEBUG.html'))
+    dst.write('<a href="%s">INFO</a>\n' % (result_log_name + '.INFO.html'))
+    dst.write('<a href="%s">WARNING</a>\n' % (result_log_name +
+                                              '.WARNING.html'))
+    dst.write('<a href="%s">ERROR</a>\n' % (result_log_name + '.ERROR.html'))
     dst.write('</div>\n\n')
 
     # log
@@ -1644,13 +1650,13 @@ def generate_test_html(test_dir, test_filenames):
     index = open(os.path.join(test_dir, 'index.html'), "w")
     index.write(html_prefix)
     for name in sorted(os.listdir(test_dir)):
-        if name.endswith('html') or name.endswith('htm'):
+        if name.endswith('html'):
             continue
         fullname = os.path.join(test_dir, name)
         if (name.endswith("INFO") or name.endswith("WARNING") or
                 name.endswith("ERROR") or name.endswith("DEBUG")):
             generate_test_log_html(fullname, test_filenames)
-            index.write("<a href=%s.htm>%s</a> (<a href=%s>RAW</a>)<br>" %
+            index.write("<a href=%s.html>%s</a> (<a href=%s>RAW</a>)<br>" %
                             (fullname, name, fullname))
         else:
             index.write("<a href=%s>%s</a><br>" % (fullname, name))

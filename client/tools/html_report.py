@@ -1377,23 +1377,6 @@ def make_html_file(metadata, results, tag, host, output_file_name, dirname,
     @param dirname: Prefix for HTML links. If empty string, the HTML links
             will be relative to the results dir.
     """
-    print "------------------------------------------------------------------"
-    print metadata
-    print "------------------------------------------------------------------"
-    print results
-    print "------------------------------------------------------------------"
-    print tag
-    print "------------------------------------------------------------------"
-    print host
-    print "------------------------------------------------------------------"
-    print output_file_name
-    print "------------------------------------------------------------------"
-    print dirname
-    print "------------------------------------------------------------------"
-    print resultdir
-    print "------------------------------------------------------------------"
-    print test_filenames
-    print "------------------------------------------------------------------"
     html_prefix = """
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
@@ -1687,7 +1670,6 @@ def parse_result(dirname, line, results_data):
             parts.remove('')
         except ValueError:
             break
-    print parts
 
     if len(parts) < 5:
         return None
@@ -1923,7 +1905,7 @@ if __name__ == "__main__":
         if os.path.isdir(results_dir):
             try:
                 create_report(results_dir, html_path, output_file,
-                              test_dirs)
+                              options.test_dirs)
             except InvalidAutotestResultDirError, detail:
                 print "%s (directory missing 'status' file)" % detail
                 parser.print_help()

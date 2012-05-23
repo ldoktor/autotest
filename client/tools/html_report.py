@@ -1694,7 +1694,7 @@ def parse_result(dirname, line, results_data):
         except IndexError:
             results_data[""][1].append(parts[1])
 
-    elif (parts[0] == 'GOOD' or parts[0] == 'TEST_NA' or parts[0] == 'FAIL'):
+    elif re.match(r'(GOOD|TEST_NA|FAIL|WARN)', parts[0]):
         result = {}
         exec_time = ''
         # fetch time stamp
@@ -1858,7 +1858,7 @@ def create_report(dirname, html_path='', output_file_name=None,
     # end of function
     sysinfo_dir = os.path.join(dirname, 'sysinfo')
     host = get_info_file(os.path.join(sysinfo_dir, 'hostname'))
-    rx = re.compile('^\s+(GOOD|FAIL|TEST_NA|START).*$')
+    rx = re.compile('^\s+(GOOD|FAIL|TEST_NA|WARN|START).*$')
     # create the results set dict
     results_data = {}
     results_data[""] = [0, [], None]

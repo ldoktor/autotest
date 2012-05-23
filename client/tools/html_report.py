@@ -1643,15 +1643,17 @@ def generate_test_html(test_dir, test_filenames):
 """ % (format_css)
     index = open(os.path.join(test_dir, 'index.html'), "w")
     index.write(html_prefix)
-    for name in os.listdir(test_dir):
+    for name in sorted(os.listdir(test_dir)):
+        if name.endswith('html') or name.endswith('htm'):
+            continue
         fullname = os.path.join(test_dir, name)
         if (name.endswith("INFO") or name.endswith("WARNING") or
                 name.endswith("ERROR") or name.endswith("DEBUG")):
             generate_test_log_html(fullname, test_filenames)
             index.write("<a href=%s.htm>%s</a> (<a href=%s>RAW</a>)<br>" %
-                                            (fullname, fullname, fullname))
+                            (fullname, name, fullname))
         else:
-            index.write("<a href=%s>%s</a><br>" % (fullname, fullname))
+            index.write("<a href=%s>%s</a><br>" % (fullname, name))
     index.write("</body></html>")
     index.close()
 
